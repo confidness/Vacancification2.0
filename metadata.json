@@ -1,0 +1,5 @@
+{
+  "name": "Vacancification",
+  "description": "AI-powered job discovery and career evaluation layer. Get insights on vacancies before you apply.",
+  "requestFramePermissions": ["geolocation"]
+}

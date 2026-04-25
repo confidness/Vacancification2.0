@@ -1,0 +1,121 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Comprehensive profile for either candidates or employers",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["candidate", "employer"] },
+        "fullName": { "type": "string" },
+        "city": { "type": "string" },
+        "profession": { "type": "string" },
+        "birthDate": { "type": "string", "format": "date" },
+        "gender": { "type": "string", "enum": ["male", "female", "other"] },
+        "strengths": { "type": "string" },
+        "weaknesses": { "type": "string" },
+        "isProfileComplete": { "type": "boolean" },
+        "isVerified": { "type": "boolean" },
+        "trustScore": { "type": "number" },
+        "flaggedCount": { "type": "integer" },
+        "verificationStatus": { "type": "string", "enum": ["unverified", "pending", "verified", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "JobPosting": {
+      "title": "Job Posting",
+      "description": "Vacancy created by an employer",
+      "type": "object",
+      "properties": {
+        "jobId": { "type": "string" },
+        "employerId": { "type": "string" },
+        "employerName": { "type": "string" },
+        "profession": { "type": "string" },
+        "city": { "type": "string" },
+        "description": { "type": "string" },
+        "minSalary": { "type": "number" },
+        "maxSalary": { "type": "number" },
+        "preferredSalary": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["employerId", "profession", "city", "minSalary", "maxSalary", "preferredSalary"]
+    },
+    "Message": {
+      "title": "User Message",
+      "description": "Direct message between users",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "receiverName": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["senderId", "receiverId", "content"]
+    },
+    "AIChatSession": {
+      "title": "AI Chat Session",
+      "description": "Session tracking AI analysis for a specific job",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "jobId": { "type": "string" },
+        "jobTitle": { "type": "string" },
+        "companyName": { "type": "string" },
+        "evaluation": { "type": "object" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "jobId"]
+    },
+    "AIChatMessage": {
+      "title": "AI Chat Message",
+      "description": "A single message in an AI chat session",
+      "type": "object",
+      "properties": {
+        "role": { "type": "string", "enum": ["user", "model"] },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["role", "text", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/profiles/{userId}": {
+      "schema": "UserProfile",
+      "description": "Main user records"
+    },
+    "/jobs/{jobId}": {
+      "schema": "JobPosting",
+      "description": "Central registry of available jobs"
+    },
+    "/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Direct communication between users"
+    },
+    "/ai_chats/{chatId}": {
+      "schema": "AIChatSession",
+      "description": "AI evaluation sessions"
+    },
+    "/ai_chats/{chatId}/messages/{messageId}": {
+      "schema": "AIChatMessage",
+      "description": "Messages within an AI evaluation session"
+    },
+    "/interviews/{interviewId}": {
+      "title": "Mock Interview Session",
+      "description": "Stored mock interview results and feedback",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "jobId": { "type": "string" },
+        "jobTitle": { "type": "string" },
+        "companyName": { "type": "string" },
+        "feedback": { "type": "string" },
+        "status": { "type": "string", "enum": ["ongoing", "completed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

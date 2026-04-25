@@ -1,0 +1,96 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Primitive Helpers
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function verified() { return request.auth.token.email_verified == true; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    function getProfile(userId) {
+      return get(/databases/$(database)/documents/profiles/$(userId)).data;
+    }
+
+    function isEmployer() {
+      return isSignedIn() && getProfile(request.auth.uid).role == 'employer';
+    }
+
+    function isValidProfile(data) {
+      return data.email is string && data.email.size() <= 256
+          && data.role in ['candidate', 'employer']
+          && (data.fullName == null || (data.fullName is string && data.fullName.size() <= 128))
+          && (data.city == null || (data.city is string && data.city.size() <= 128))
+          && (data.profession == null || (data.profession is string && data.profession.size() <= 128))
+          && (data.birthDate == null || (data.birthDate is string && data.birthDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')))
+          && (data.gender == null || data.gender in ['male', 'female', 'other'])
+          && (data.strengths == null || (data.strengths is string && data.strengths.size() <= 2000))
+          && (data.weaknesses == null || (data.weaknesses is string && data.weaknesses.size() <= 2000))
+          // Anti-fraud: cannot set own verification or trust score during standard create/update
+          && (!('isVerified' in data) || data.isVerified == false)
+          && (!('trustScore' in data) || data.trustScore == 0);
+    }
+
+    function isValidJob(data) {
+      return data.profession is string && data.profession.size() <= 128
+          && data.city is string && data.city.size() <= 128
+          && data.createdAt == request.time;
+    }
+
+    function isValidMessage(data) {
+      return data.senderId == request.auth.uid
+          && data.senderName is string && data.senderName.size() <= 128
+          && data.receiverId is string && data.receiverId.size() <= 128
+          && data.receiverName is string && data.receiverName.size() <= 128
+          && data.content is string && data.content.size() <= 5000
+          && data.createdAt == request.time;
+    }
+
+    // 1. User Profiles
+    match /profiles/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && verified() && isValidProfile(incoming());
+      allow update: if isOwner(userId) && verified() && isValidProfile(incoming()) && incoming().uid == userId;
+    }
+
+    // 2. Job Postings
+    match /jobs/{jobId} {
+      allow list, get: if isSignedIn();
+      allow create: if isEmployer() && verified() && isValidJob(incoming());
+      allow update: if isOwner(existing().employerId) && verified() && isValidJob(incoming());
+      allow delete: if isOwner(existing().employerId) && verified();
+    }
+
+    // 3. User Messages
+    match /messages/{messageId} {
+      allow create: if isSignedIn() && isValidMessage(incoming());
+      allow list: if isSignedIn() && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid);
+      allow get: if isSignedIn() && (resource.data.senderId == request.auth.uid || resource.data.receiverId == request.auth.uid);
+    }
+
+    // 4. AI Chat Sessions
+    match /ai_chats/{chatId} {
+      allow list, get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow update: if isSignedIn() && existing().userId == request.auth.uid && incoming().userId == request.auth.uid;
+
+      match /messages/{msgId} {
+        allow list, get: if isSignedIn() && get(/databases/$(database)/documents/ai_chats/$(chatId)).data.userId == request.auth.uid;
+        allow create: if isSignedIn() && get(/databases/$(database)/documents/ai_chats/$(chatId)).data.userId == request.auth.uid;
+      }
+    }
+
+    // 5. Mock Interview Sessions
+    match /interviews/{id} {
+      allow list, get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow update: if isSignedIn() && existing().userId == request.auth.uid;
+    }
+  }
+}
